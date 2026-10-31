@@ -1,0 +1,533 @@
+{
+  "info": {
+    "_postman_id": "8f2b1d6e-4c7a-4f3b-9c1e-5a0d2b7e9f41",
+    "name": "JulleyOnline Kanban API",
+    "description": "Multi-tenant Kanban API. Run **Auth → Login** first: cookies are stored by Postman and tenantId is captured automatically. Then run any other request.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api" },
+    { "key": "tenantId", "value": "" },
+    { "key": "organizationId", "value": "" },
+    { "key": "boardId", "value": "" },
+    { "key": "columnId", "value": "" },
+    { "key": "taskId", "value": "" },
+    { "key": "membershipId", "value": "" },
+    { "key": "email", "value": "rahul@abctech.dev" },
+    { "key": "password", "value": "Password123!" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeded', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const memberships = body.data.memberships || [];",
+                  "const tenantMembership = memberships.find((m) => m.tenantId) || memberships[0];",
+                  "if (tenantMembership) {",
+                  "  pm.collectionVariables.set('tenantId', tenantMembership.tenantId || tenantMembership.tenant.id);",
+                  "  pm.collectionVariables.set('organizationId', tenantMembership.organizationId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] }
+          }
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Person\",\n  \"email\": \"new.person@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "item": [
+        {
+          "name": "List organizations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data[0]) {",
+                  "  pm.collectionVariables.set('organizationId', body.data[0].id);",
+                  "  if (body.data[0].tenants && body.data[0].tenants[0]) {",
+                  "    pm.collectionVariables.set('tenantId', body.data[0].tenants[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/organizations", "host": ["{{baseUrl}}"], "path": ["organizations"] }
+          }
+        },
+        {
+          "name": "Create organization",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Global\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/organizations", "host": ["{{baseUrl}}"], "path": ["organizations"] }
+          }
+        },
+        {
+          "name": "Get organization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/organizations/{{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["organizations", "{{organizationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create branch (tenant)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.id) pm.collectionVariables.set('tenantId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Berlin Office\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/organizations/{{organizationId}}/tenants",
+              "host": ["{{baseUrl}}"],
+              "path": ["organizations", "{{organizationId}}", "tenants"]
+            }
+          }
+        },
+        {
+          "name": "List organization members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/organizations/{{organizationId}}/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["organizations", "{{organizationId}}", "members"]
+            }
+          }
+        },
+        {
+          "name": "Add organization member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"priya@abctech.dev\",\n  \"role\": \"TENANT_ADMIN\",\n  \"tenantId\": \"{{tenantId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/organizations/{{organizationId}}/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["organizations", "{{organizationId}}", "members"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenants",
+      "item": [
+        {
+          "name": "List tenants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tenants?organizationId={{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants"],
+              "query": [{ "key": "organizationId", "value": "{{organizationId}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get tenant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/tenants/{{tenantId}}", "host": ["{{baseUrl}}"], "path": ["tenants", "{{tenantId}}"] }
+          }
+        },
+        {
+          "name": "People (assignable)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/tenants/{{tenantId}}/people",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "{{tenantId}}", "people"]
+            }
+          }
+        },
+        {
+          "name": "List tenant members",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/tenants/{{tenantId}}/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "{{tenantId}}", "members"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Boards",
+      "item": [
+        {
+          "name": "List boards",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": { "raw": "{{baseUrl}}/boards", "host": ["{{baseUrl}}"], "path": ["boards"] }
+          }
+        },
+        {
+          "name": "Create board",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.id) {",
+                  "  pm.collectionVariables.set('boardId', body.data.id);",
+                  "  if (body.data.columns && body.data.columns[0]) {",
+                  "    pm.collectionVariables.set('columnId', body.data.columns[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-Id", "value": "{{tenantId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Release Plan\",\n  \"description\": \"Q3 delivery board\",\n  \"templateColumns\": [\"Backlog\", \"In Progress\", \"Review\", \"Done\"]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/boards", "host": ["{{baseUrl}}"], "path": ["boards"] }
+          }
+        },
+        {
+          "name": "Get board",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": { "raw": "{{baseUrl}}/boards/{{boardId}}", "host": ["{{baseUrl}}"], "path": ["boards", "{{boardId}}"] }
+          }
+        },
+        {
+          "name": "Update board",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-Id", "value": "{{tenantId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Release Plan 2026\"\n}" },
+            "url": { "raw": "{{baseUrl}}/boards/{{boardId}}", "host": ["{{baseUrl}}"], "path": ["boards", "{{boardId}}"] }
+          }
+        },
+        {
+          "name": "List columns",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/boards/{{boardId}}/columns",
+              "host": ["{{baseUrl}}"],
+              "path": ["boards", "{{boardId}}", "columns"]
+            }
+          }
+        },
+        {
+          "name": "Create column",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.id) pm.collectionVariables.set('columnId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-Id", "value": "{{tenantId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Blocked\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/boards/{{boardId}}/columns",
+              "host": ["{{baseUrl}}"],
+              "path": ["boards", "{{boardId}}", "columns"]
+            }
+          }
+        },
+        {
+          "name": "Reorder columns",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-Id", "value": "{{tenantId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"boardId\": \"{{boardId}}\",\n  \"orderedIds\": [\"{{columnId}}\"]\n}" },
+            "url": { "raw": "{{baseUrl}}/columns/reorder", "host": ["{{baseUrl}}"], "path": ["columns", "reorder"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "List tasks",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/tasks?boardId={{boardId}}&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"],
+              "query": [
+                { "key": "boardId", "value": "{{boardId}}" },
+                { "key": "limit", "value": "100" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.id) pm.collectionVariables.set('taskId', body.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-Id", "value": "{{tenantId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boardId\": \"{{boardId}}\",\n  \"columnId\": \"{{columnId}}\",\n  \"title\": \"Ship audit log\",\n  \"description\": \"Include tenant id on every row.\",\n  \"priority\": \"URGENT\",\n  \"dueDate\": \"2026-12-01T00:00:00.000Z\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/tasks", "host": ["{{baseUrl}}"], "path": ["tasks"] }
+          }
+        },
+        {
+          "name": "Get task",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
+          }
+        },
+        {
+          "name": "Update task (version required)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-Id", "value": "{{tenantId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Ship audit log v2\",\n  \"priority\": \"HIGH\",\n  \"version\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
+          }
+        },
+        {
+          "name": "Move task (version required)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-Id", "value": "{{tenantId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"columnId\": \"{{columnId}}\",\n  \"index\": 0,\n  \"version\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}/move",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}", "move"]
+            }
+          }
+        },
+        {
+          "name": "Task activity",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}/activity",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}", "activity"]
+            }
+          }
+        },
+        {
+          "name": "Delete task",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activity & Presence",
+      "item": [
+        {
+          "name": "Activity feed",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/activity?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity"],
+              "query": [{ "key": "limit", "value": "50" }]
+            }
+          }
+        },
+        {
+          "name": "Presence",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-Id", "value": "{{tenantId}}" }],
+            "url": { "raw": "{{baseUrl}}/presence", "host": ["{{baseUrl}}"], "path": ["presence"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Assistant",
+      "item": [
+        {
+          "name": "Ask assistant",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-Id", "value": "{{tenantId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"What is overdue and who is overloaded?\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/ai/assistant", "host": ["{{baseUrl}}"], "path": ["ai", "assistant"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+      }
+    }
+  ]
+}

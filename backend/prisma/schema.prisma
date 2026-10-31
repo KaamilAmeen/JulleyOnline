@@ -1,0 +1,207 @@
+// Multi-tenant Kanban — Prisma schema
+// Hierarchy: Organization -> Tenant -> Board -> Column -> Task
+// Every tenant-owned row carries tenant_id so isolation can be enforced in
+// every query (and verified by the integration tests).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ORG_ADMIN
+  TENANT_ADMIN
+  MEMBER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(120)
+  slug      String   @unique @db.VarChar(80)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenants      Tenant[]
+  memberships  Membership[]
+  boards       Board[]
+  activityLogs ActivityLog[]
+
+  @@map("organizations")
+}
+
+model Tenant {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(120)
+  slug           String   @db.VarChar(80)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  Membership[]
+  boards       Board[]
+  columns      BoardColumn[]
+  tasks        Task[]
+  activityLogs ActivityLog[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("tenants")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(120)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  avatarColor  String   @default("#6366f1") @map("avatar_color") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  memberships   Membership[]
+  createdBoards Board[]        @relation("BoardCreatedBy")
+  assignedTasks Task[]         @relation("TaskAssignee")
+  createdTasks  Task[]         @relation("TaskCreatedBy")
+  activityLogs  ActivityLog[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+/// A membership links a user to an organization and (optionally) a tenant.
+/// tenant_id = NULL means an organization-wide membership (ORG_ADMIN).
+model Membership {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  tenantId       String?  @map("tenant_id") @db.Uuid
+  role           Role
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenant       Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+model Board {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  name           String   @db.VarChar(160)
+  description    String?  @db.Text
+  createdBy      String   @map("created_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator      User          @relation("BoardCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  columns      BoardColumn[]
+  tasks        Task[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([tenantId, createdAt])
+  @@map("boards")
+}
+
+model BoardColumn {
+  id        String   @id @default(uuid()) @db.Uuid
+  boardId   String   @map("board_id") @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(80)
+  position  Float    @default(1024)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  board  Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tasks  Task[]
+
+  @@index([boardId])
+  @@index([tenantId])
+  @@index([boardId, position])
+  @@map("columns")
+}
+
+model Task {
+  id          String    @id @default(uuid()) @db.Uuid
+  boardId     String    @map("board_id") @db.Uuid
+  columnId    String    @map("column_id") @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  title       String    @db.VarChar(200)
+  description String?   @db.Text
+  priority    Priority  @default(MEDIUM)
+  assignedTo  String?   @map("assigned_to") @db.Uuid
+  dueDate     DateTime? @map("due_date")
+  position    Float     @default(1024)
+  version     Int       @default(1)
+  createdBy   String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  board    Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column   BoardColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignee User?       @relation("TaskAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  creator  User        @relation("TaskCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, boardId])
+  @@index([tenantId, columnId, position])
+  @@index([assignedTo])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model ActivityLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  entityType     String   @map("entity_type") @db.VarChar(40)
+  entityId       String   @map("entity_id") @db.Uuid
+  action         String   @db.VarChar(40)
+  details        Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(128)
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}

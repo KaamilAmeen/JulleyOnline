@@ -1,0 +1,14 @@
+{
+  "name": "julleyonline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-tenant real-time Kanban — repo tooling and OpenCode MCP server",
+  "type": "module",
+  "scripts": {
+    "mcp:postgres": "node scripts/postgres-mcp.mjs",
+    "mcp:check": "node scripts/mcp-check.mjs"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/server-postgres": "0.6.2"
+  }
+}
