@@ -26,7 +26,14 @@ export const Select = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<H
     return (
       <select
         ref={ref}
-        className={cn(base, "h-10 cursor-pointer appearance-none bg-[right_0.75rem_center] pr-9", className)}
+        className={cn(
+          base,
+          // `bg-surface-2` must stay opaque: Chrome derives the native option
+          // list background from it. The `position:` hint stops tailwind-merge
+          // from treating the arbitrary value as a background-colour conflict.
+          "h-10 cursor-pointer appearance-none bg-surface-2 bg-[position:right_0.75rem_center] pr-9",
+          className,
+        )}
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b9bb4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",

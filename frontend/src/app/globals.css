@@ -24,6 +24,31 @@
   color-scheme: dark;
 }
 
+/*
+ * Native <select> option lists are painted by the browser, not by Tailwind,
+ * so they ignore the control's utility classes. Without explicit colours the
+ * popup can render light-on-light. Keep the list on the same surface as the
+ * rest of the UI.
+ */
+select {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background-color: var(--color-surface-2);
+  color: var(--color-ink);
+}
+
+select option:disabled {
+  color: var(--color-faint);
+}
+
+select option:checked {
+  background-color: var(--color-surface-3);
+  color: var(--color-ink);
+}
+
 html,
 body {
   height: 100%;
