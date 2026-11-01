@@ -157,7 +157,8 @@ The Python service has two modes:
   workload, column distribution, priority mix, unassigned, recent activity,
   search, summary). Every number comes from the snapshot, so answers are
   auditable and work offline.
-- **Optional LLM:** any OpenAI-compatible endpoint, prompted to use only the
+- **Optional LLM:** Gemini via its OpenAI-compatible endpoint (default), or any
+  other OpenAI-compatible provider. The model is prompted to use only the
   supplied data. Provider errors fall back to deterministic mode.
 
 No database credentials reach Python, and the service exposes no write endpoint.

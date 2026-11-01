@@ -22,7 +22,7 @@ resolution.
 | **Ordering** | Fractional `position` values; O(1) drag-and-drop with local rebalancing. |
 | **UX** | Drag-and-drop board, task drawer, create/edit/delete, column manager, board settings, filters, activity feed, member management, dark theme. |
 | **Resilience** | Optimistic moves, 50-step undo/redo, automatic token refresh, query invalidation on every event, network recovery. |
-| **AI (optional)** | Read-only FastAPI analyst over a tenant-scoped snapshot; deterministic offline mode plus optional OpenAI-compatible LLM. |
+| **AI (optional)** | Read-only FastAPI analyst over a tenant-scoped snapshot; deterministic offline mode plus optional Gemini (or any OpenAI-compatible) LLM. |
 | **Deliverables** | API + WebSocket docs, ERD, architecture/trade-offs, Postman collection, seed data, test report. |
 
 ## Stack
@@ -89,41 +89,65 @@ node scripts\generate-env.mjs
 ```
 
 Make sure `AI_SERVICE_TOKEN` matches in `backend/.env` and `ai-service/.env`.
-Leave `LLM_API_KEY` empty to run the assistant fully offline.
+Leave `GEMINI_API_KEY` empty to run the assistant fully offline. To use Gemini,
+paste a key from <https://aistudio.google.com/apikey> into `ai-service/.env`:
 
-### 3. Backend
+```dotenv
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your-key
+LLM_MODEL=gemini-2.5-flash
+```
+
+Any other OpenAI-compatible provider works too — see
+[ai-service/README.md](ai-service/README.md).
+
+### 3. Install dependencies
+
+```powershell
+npm.cmd install                       # root tooling (MCP + dev runner)
+npm.cmd install --prefix backend
+npm.cmd install --prefix frontend
+```
+
+### 4. Prepare the database
 
 ```powershell
 cd backend
-npm.cmd install
 npx.cmd prisma generate
 npx.cmd prisma migrate dev --name init
 npm.cmd run db:seed
-npm.cmd run dev            # http://localhost:5000
 ```
 
 `migrate dev` creates the schema from `prisma/schema.prisma`. If you prefer raw
 DDL, `database/schema.sql` contains the generated `CREATE TABLE` statements.
 
-### 4. Frontend
+### 5. Run the whole app
+
+From the **repository root**, one command starts all three services:
 
 ```powershell
-cd frontend
-npm.cmd install
-npm.cmd run dev            # http://localhost:3000
+npm.cmd run dev
 ```
+
+| Service | URL |
+| --- | --- |
+| API + WebSocket | <http://localhost:5000> |
+| Frontend | <http://localhost:3000> |
+| AI assistant | <http://localhost:8000> |
+
+Prefer separate terminals? Use `npm.cmd run dev:api`, `npm.cmd run dev:web`
+and `npm.cmd run dev:ai` from the root.
 
 The browser calls `/api/*` on port 3000; `next.config.ts` proxies it to
 `http://localhost:5000`, keeping the auth cookies first-party. Socket.IO
 connects directly to `NEXT_PUBLIC_SOCKET_URL`.
 
-### 5. AI assistant (optional)
+The AI service needs a one-time virtualenv:
 
 ```powershell
 cd ai-service
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 ```
 
 If it is not running, the rest of the app still works; `/api/ai/assistant`
@@ -145,12 +169,16 @@ Seeded by `backend/prisma/seed.ts` — password for all accounts:
 | Kiran Patil | `kiran@xyzsolutions.dev` | MEMBER — Mumbai |
 
 Try signing in as `rahul` and `priya` in two browsers to see presence, live
-moves and role-based UI.
+moves and role-based UI. A copy-paste friendly version, plus suggested test
+scenarios, lives in [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md).
 
 ## Scripts
 
 | Location | Command | Purpose |
 | --- | --- | --- |
+| root | `npm.cmd run dev` | Start API + frontend + AI together |
+| root | `npm.cmd run test` | Run the backend integration suite |
+| root | `npm.cmd run mcp:check` | Verify the PostgreSQL MCP server |
 | backend | `npm.cmd run dev` | API + WebSocket with hot reload |
 | backend | `npm.cmd run build` / `start` | Compile to `dist/` and run |
 | backend | `npm.cmd run typecheck` | TypeScript check |
@@ -202,9 +230,15 @@ so it obeys the same rules.
 
 | | |
 | --- | --- |
-| ![Login](screenshots/login.png) | ![Dashboard](screenshots/dashboard.png) |
-| ![Board](screenshots/board.png) | ![Task drawer](screenshots/task-drawer.png) |
-| ![Activity](screenshots/activity.png) | ![Assistant](screenshots/assistant.png) |
+| ![Login](screenshots/01-login.png) | ![Dashboard](screenshots/02-dashboard.png) |
+| ![Board](screenshots/03-board.png) | ![Task drawer](screenshots/04-task-drawer.png) |
+| ![Activity](screenshots/05-activity.png) | ![Assistant](screenshots/06-assistant.png) |
+
+Regenerate them against a running app with:
+
+```powershell
+node scripts\capture-screenshots.mjs
+```
 
 ## Known limitations
 

@@ -83,7 +83,7 @@ def health() -> dict[str, Any]:
         "status": "ok",
         "version": __version__,
         "authConfigured": bool(SERVICE_TOKEN),
-        "provider": "llm" if config else "deterministic",
+        "provider": config["provider"] if config else "deterministic",
         "model": config["model"] if config else None,
     }
 
@@ -108,11 +108,11 @@ def query(
 
     llm_answer = ask_llm(question, context, results)
     if llm_answer is not None:
-        answer, model = llm_answer
+        answer, model, provider = llm_answer
         return QueryResponse(
             answer=answer,
             toolsUsed=tools_used,
-            provider="llm",
+            provider=provider,
             model=model,
         )
 

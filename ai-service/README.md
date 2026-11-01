@@ -80,10 +80,29 @@ Response:
    results into Markdown. Every number comes straight from the snapshot, so the
    answer is auditable and reproducible. Unknown questions fall back to a
    summary.
-2. **Optional LLM.** Set `LLM_API_KEY` (plus optional `LLM_BASE_URL` and
-   `LLM_MODEL`) to any OpenAI-compatible chat-completions endpoint. The model
-   receives **only** the same snapshot and tool results, with a system prompt
-   that forbids inventing data. Any provider error silently falls back to mode 1.
+2. **Optional LLM (Gemini by default).** Gemini's OpenAI-compatible endpoint is
+   built in:
+
+   ```dotenv
+   LLM_PROVIDER=gemini
+   GEMINI_API_KEY=your-key-from-aistudio.google.com/apikey
+   LLM_MODEL=gemini-2.5-flash
+   ```
+
+   You can also point the service at any other OpenAI-compatible endpoint:
+
+   ```dotenv
+   LLM_PROVIDER=openai
+   LLM_API_KEY=sk-...
+   LLM_BASE_URL=https://api.openai.com/v1
+   LLM_MODEL=gpt-4o-mini
+   ```
+
+   The model receives **only** the same snapshot and tool results, with a system
+   prompt that forbids inventing data. Any provider error silently falls back to
+   mode 1, so the assistant keeps working offline or when the key is wrong.
+   `/health` reports the active `provider` (`gemini`, `openai` or
+   `deterministic`) and `model`.
 
 ## Tests
 
@@ -91,5 +110,7 @@ Response:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Nine tests cover routing, done-column detection, workload aggregation, search,
-the HTTP contract, service-token enforcement and the deterministic answer text.
+Twelve tests cover routing, done-column detection, workload aggregation, search,
+the HTTP contract, service-token enforcement, the deterministic answer text and
+Gemini provider resolution (including the OpenAI-compatibility URL and graceful
+fallback).

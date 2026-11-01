@@ -5,10 +5,18 @@
   "description": "Multi-tenant real-time Kanban — repo tooling and OpenCode MCP server",
   "type": "module",
   "scripts": {
+    "dev": "concurrently --kill-others --names api,web,ai --prefix-colors blue,green,magenta \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\" \"node scripts/run-ai.mjs\"",
+    "dev:api": "npm --prefix backend run dev",
+    "dev:web": "npm --prefix frontend run dev",
+    "dev:ai": "node scripts/run-ai.mjs",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "test": "npm --prefix backend test",
     "mcp:postgres": "node scripts/postgres-mcp.mjs",
     "mcp:check": "node scripts/mcp-check.mjs"
   },
   "devDependencies": {
-    "@modelcontextprotocol/server-postgres": "0.6.2"
+    "@modelcontextprotocol/server-postgres": "0.6.2",
+    "concurrently": "^10.0.6",
+    "puppeteer-core": "^25.16.0"
   }
 }
