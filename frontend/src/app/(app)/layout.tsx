@@ -1,34 +1,19 @@
-"use client";
+import type { ReactNode } from "react";
+import { AppLayoutClient } from "@/components/app-layout-client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { KanbanSquare } from "lucide-react";
-import { useAuth } from "@/context/auth-context";
-import { AppShell } from "@/components/app-shell";
-import { Spinner } from "@/components/ui/feedback";
+/**
+ * Every route below this layout is gated on the client: the shell only renders
+ * after `/api/auth/me` resolves in the browser, so the server never renders a
+ * page segment here. That makes instant-navigation validation impossible for
+ * these routes (Next.js reports them as "dropped segments"), and they are
+ * client-rendered SPA transitions anyway.
+ *
+ * `instant` can only be exported from a Server Component, which is why the
+ * auth-gated shell lives in `AppLayoutClient` and this file stays a server
+ * layout. See node_modules/next/dist/docs/.../route-segment-config/instant.
+ */
+export const instant = false;
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [loading, user, router]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <span className="flex size-14 items-center justify-center rounded-2xl bg-accent/15 text-accent-strong">
-          <KanbanSquare className="size-7" />
-        </span>
-        <div className="flex items-center gap-2 text-sm text-muted">
-          <Spinner className="size-4" /> Loading your workspace
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
-  return <AppShell>{children}</AppShell>;
+export default function AppLayout({ children }: { children: ReactNode }) {
+  return <AppLayoutClient>{children}</AppLayoutClient>;
 }
